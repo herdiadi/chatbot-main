@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IF-Bara — Informatika UNBARA</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        background-color: #f8f7ff;
+        color: #2d3436;
+        font-family: 'Inter', sans-serif;
+        overflow: hidden;
+      }
+
+      /* Sidebar Styling */
+      aside {
+        background: linear-gradient(180deg, #4b0082 0%, #6a11cb 100%);
+        color: white;
+        transition: all 0.3s;
+      }
+
+      #chatList li {
+        transition: 0.2s;
+        border-radius: 8px;
+        margin: 4px 10px;
+        border: none;
+        color: rgba(255,255,255,0.8);
+      }
+
+      #chatList li:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      #chatList li.active-chat {
+        background: rgba(255, 255, 255, 0.2);
+        font-weight: 600;
+        color: white;
+      }
+
+      /* Chat Area */
+      .chat-main {
+        background-color: #ffffff;
+        border-radius: 20px 0 0 0;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+      }
+      
+      @media (max-width: 767.98px) {
+        .chat-main {
+          border-radius: 0;
+        }
+      }
+
+      /* MEMBUAT CHAT CONTAINER MENYESUAIKAN TINGGI LAYAR (FLEX GROW) DAN TIDAK OVERFLOW KE BAWAH */
+      #chatContainer {
+        height: 0; /* Mengizinkan flex-grow mengontrol tinggi penuh secara akurat tanpa dorongan vh */
+        overflow-y: auto;
+        padding: 20px;
+        background: #fdfbff;
+        border-radius: 15px;
+        scrollbar-width: thin;
+      }
+
+      /* Bubbles */
+      .chat-bubble {
+        max-width: 85%;
+      }
+      @media (min-width: 768px) {
+        .chat-bubble {
+          max-width: 75%;
+        }
+      }
+      
+      .chat-bubble {
+        padding: 12px 18px;
+        border-radius: 20px;
+        margin: 8px 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      }
+
+      .user {
+        background: #6a11cb;
+        color: white;
+        border-bottom-right-radius: 2px;
+      }
+
+      .bot {
+        background: #eeeaff;
+        color: #4b0082;
+        border-bottom-left-radius: 2px;
+        white-space: pre-wrap;
+      }
+
+      .timestamp {
+        font-size: 0.7rem;
+        color: #a0a0a0;
+        margin: 0 5px 10px 5px;
+      }
+
+      /* Template Questions */
+      .template-wrapper {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 10px 0;
+        margin-bottom: 5px;
+        scrollbar-width: none;
+      }
+      .template-wrapper::-webkit-scrollbar {
+        display: none;
+      }
+      .btn-template {
+        background: #eeeaff;
+        color: #4b0082;
+        border: 1px solid #d1c4e9;
+        white-space: nowrap;
+        font-size: 0.8rem;
+        border-radius: 15px;
+        padding: 6px 16px;
+        transition: 0.3s;
+      }
+      .btn-template:hover {
+        background: #6a11cb;
+        color: white;
+      }
+
+      /* Buttons & Inputs */
+      .btn-primary {
+        background-color: #6a11cb;
+        border: none;
+      }
+
+      .btn-voice {
+        border: 1px solid #dee2e6;
+        color: #6c757d;
+        transition: all 0.3s;
+      }
+
+      .btn-voice.active {
+        background-color: #ff4757 !important;
+        color: white !important;
+        border-color: #ff4757;
+        animation: pulse 1.5s infinite;
+      }
+
+      .form-control:focus {
+        border-color: #6a11cb;
+        box-shadow: none;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+      }
+    </style>
+  </head>
+  <body class="d-flex vh-100">
+    <aside id="sidebarMenu" class="offcanvas-md offcanvas-start w-25 flex-column py-3" style="--bs-offcanvas-width: 280px;">
+      <div class="px-3 mb-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold m-0 small uppercase text-white">Riwayat Diskusi</h5>
+        <div class="btn-group">
+          <button id="newChatBtn" class="btn btn-sm btn-light text-primary" title="Chat Baru">＋</button>
+          <button id="deleteChatBtn" class="btn btn-sm btn-light text-danger" title="Hapus Semua">🗑</button>
+        </div>
+      </div>
+      <ul id="chatList" class="list-unstyled flex-grow-1 overflow-auto"></ul>
+    </aside>
+
+    <main class="flex-grow-1 d-flex flex-column chat-main p-3 p-md-4 h-100 overflow-hidden">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-secondary d-md-none rounded-circle p-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" style="width: 40px; height: 40px; line-height: 1;">
+            ☰
+          </button>
+          <h4 class="fw-bold m-0 fs-5 fs-md-4">
+            <span style="color: #6a11cb;">🤖 IF-Bara</span>
+            <small class="text-muted fs-6 fw-normal d-none d-sm-inline ms-sm-2">Informatika UNBARA</small>
+          </h4>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="toggleVoiceBotBtn" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3">
+            🔇 Audio: OFF
+          </button>
+        </div>
+      </div>
+
+      <div id="chatContainer" class="border flex-grow-1 mb-3 shadow-sm"></div>
+
+      <div class="template-wrapper">
+        <button type="button" class="btn btn-template" onclick="useTemplate('Dimana lokasi kampus UNBARA?')">📍 Lokasi</button>
+        <button type="button" class="btn btn-template" onclick="useTemplate('Apa saja daftar prodi di UNBARA?')">🎓 Daftar Prodi</button>
+        <button type="button" class="btn btn-template" onclick="useTemplate('Berapa biaya kuliah di UNBARA?')">💰 Biaya Kuliah</button>
+        <button type="button" class="btn btn-template" onclick="useTemplate('Bagaimana cara mendaftar di UNBARA?')">📝 Pendaftaran</button>
+      </div>
+
+      <form id="chatForm" class="d-flex gap-2 bg-white p-2 rounded-pill shadow-sm border align-items-center mb-1">
+        <input
+          id="userInput"
+          type="text"
+          class="form-control border-0 bg-transparent ps-3 shadow-none py-1"
+          placeholder="Tanyakan tentang UNBARA..."
+        />
+        
+        <div class="d-flex gap-1 pe-1">
+          <button type="button" id="toggleVoiceUserBtn" class="btn btn-voice rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; flex-shrink: 0;">
+            🎤
+          </button>
+          <button type="submit" class="btn btn-primary rounded-pill px-3 px-md-4 shadow py-1 fs-6">
+            Kirim
+          </button>
+        </div>
+      </form>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      const chatContainer = document.getElementById("chatContainer");
+      const chatList = document.getElementById("chatList");
+      const userInput = document.getElementById("userInput");
+      const chatForm = document.getElementById("chatForm");
+      const newChatBtn = document.getElementById("newChatBtn");
+      const deleteChatBtn = document.getElementById("deleteChatBtn");
+      const toggleVoiceBotBtn = document.getElementById("toggleVoiceBotBtn");
+      const toggleVoiceUserBtn = document.getElementById("toggleVoiceUserBtn");
+
+      const API_URL = "http://localhost:3000/api/chat";
+      let chats = JSON.parse(localStorage.getItem("gemini_chats")) || [];
+      let currentChatIndex = chats.length > 0 ? 0 : -1;
+      let botVoiceEnabled = false;
+      let userVoiceEnabled = false;
+      let recognition;
+
+      if ("webkitSpeechRecognition" in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = "id-ID";
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.onresult = (e) => {
+          const transcript = e.results[0][0].transcript;
+          userInput.value = transcript;
+          sendMessage(transcript);
+        };
+        recognition.onend = () => {
+            if(userVoiceEnabled) recognition.start();
+        };
+      }
+
+      function renderChat() {
+        chatContainer.innerHTML = "";
+        if (currentChatIndex < 0) return;
+        chats[currentChatIndex].messages.forEach((msg) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = `d-flex flex-column ${msg.sender === "user" ? "align-items-end" : "align-items-start"}`;
+          
+          const bubble = document.createElement("div");
+          bubble.className = `chat-bubble ${msg.sender}`;
+          bubble.textContent = msg.text;
+          
+          const time = document.createElement("div");
+          time.className = "timestamp";
+          time.textContent = new Date(msg.time).toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          
+          wrapper.appendChild(bubble);
+          wrapper.appendChild(time);
+          chatContainer.appendChild(wrapper);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function renderChatList() {
+        chatList.innerHTML = "";
+        chats.forEach((chat, i) => {
+          const li = document.createElement("li");
+          li.textContent = chat.title || `Diskusi ${i + 1}`;
+          li.className = `p-3 pointer ${i === currentChatIndex ? "active-chat" : ""}`;
+          li.style.cursor = "pointer";
+          li.onclick = () => {
+            currentChatIndex = i;
+            renderChatList();
+            renderChat();
+            
+            const sidebarEl = document.getElementById('sidebarMenu');
+            const bsOffcanvas = bootstrap.Offcanvas.getInstance(sidebarEl);
+            if(bsOffcanvas) bsOffcanvas.hide();
+          };
+          chatList.appendChild(li);
+        });
+      }
+
+      function saveChats() {
+        localStorage.setItem("gemini_chats", JSON.stringify(chats));
+        renderChatList();
+      }
+
+      function useTemplate(text) {
+        userInput.value = text;
+        sendMessage(text);
+        userInput.value = "";
+      }
+
+      async function sendMessage(message) {
+        if (currentChatIndex < 0) return;
+
+        chats[currentChatIndex].messages.push({
+          sender: "user",
+          text: message,
+          time: Date.now(),
+        });
+        renderChat();
+        saveChats();
+
+        const lowerMsg = message.toLowerCase();
+        if (lowerMsg.includes("siapa kamu") || lowerMsg.includes("kamu siapa") || lowerMsg.includes("nama kamu")) {
+          const reply = "Saya adalah IF-Bara, asisten AI untuk Program Studi Informatika Universitas Baturaja. Ada yang bisa saya bantu? 🎓";
+          addBotReply(reply);
+          return;
+        }
+
+        try {
+            const res = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message }),
+            });
+            const data = await res.json();
+            addBotReply(data.reply || "⚠️ Maaf, IF-Bara sedang mengalami kendala teknis.");
+        } catch (err) {
+            addBotReply("⚠️ Gagal terhubung ke server Informatika UNBARA.");
+        }
+      }
+
+      function addBotReply(text) {
+        chats[currentChatIndex].messages.push({
+          sender: "bot",
+          text: text,
+          time: Date.now(),
+        });
+        renderChat();
+        saveChats();
+        if (botVoiceEnabled) speak(text);
+      }
+
+      function speak(text) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "id-ID";
+        speechSynthesis.speak(utter);
+      }
+
+      chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const msg = userInput.value.trim();
+        if (msg === "") return;
+        userInput.value = "";
+        sendMessage(msg);
+      });
+
+      newChatBtn.addEventListener("click", () => {
+        const newChat = { title: `Diskusi ${chats.length + 1}`, messages: [] };
+        chats.push(newChat);
+        currentChatIndex = chats.length - 1;
+        saveChats();
+        renderChat();
+      });
+
+      deleteChatBtn.addEventListener("click", () => {
+        if (confirm("Hapus seluruh riwayat diskusi?")) {
+          chats = [];
+          currentChatIndex = -1;
+          saveChats();
+          chatContainer.innerHTML = "";
+        }
+      });
+
+      toggleVoiceBotBtn.addEventListener("click", () => {
+        botVoiceEnabled = !botVoiceEnabled;
+        toggleVoiceBotBtn.classList.toggle("btn-primary", botVoiceEnabled);
+        toggleVoiceBotBtn.textContent = botVoiceEnabled ? "🔊 Audio: ON" : "🔇 Audio: OFF";
+      });
+
+      toggleVoiceUserBtn.addEventListener("click", () => {
+        userVoiceEnabled = !userVoiceEnabled;
+        toggleVoiceUserBtn.classList.toggle("active", userVoiceEnabled);
+        if (userVoiceEnabled && recognition) recognition.start();
+        else if (recognition) recognition.stop();
+      });
+
+      if (chats.length === 0) {
+        chats.push({ title: "Diskusi Baru", messages: [] });
+        currentChatIndex = 0;
+      }
+      renderChatList();
+      renderChat();
+    </script>
+  </body>
+</html>
