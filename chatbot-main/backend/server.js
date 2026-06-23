@@ -6,6 +6,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server berjalan di port ${PORT}`);
+});
+
 const GEMINI_API_KEY = "AIzaSyDmXtnyMtTp5BU9__GQ0-KNF6onYR6gkac";
 const MODEL_NAME = "gemini-2.5-flash"; // Menggunakan 1.5-flash agar lebih stabil pada free tier
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
